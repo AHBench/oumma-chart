@@ -1,0 +1,19 @@
+# ClusterIP only - the engine is reachable exclusively from the web app
+# container (reverse proxy), never from the ingress.
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "oumma.engineService" . }}
+  labels:
+    {{- include "oumma.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engine
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: engine
+  ports:
+    - port: 8080
+      targetPort: http
+      name: http

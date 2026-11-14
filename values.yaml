@@ -1,0 +1,116 @@
+# Oumma chart values.
+#
+# Every value here is a placeholder or a neutral default. Real hosts,
+# credentials and domains belong in your own (uncommitted) values file.
+#
+#   helm install oumma ./oumma-chart -f my-values.yaml -n oumma
+
+nameOverride: ""
+
+image:
+  registry: abhakim1980
+  repository: brief-repo
+  engineTag: oumma
+  appTag: oumma-app
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+# e.g.
+# - name: dockerhub-<user>
+
+serviceAccount:
+  create: false
+  name: ""
+
+engine:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  # Name of an EXISTING ConfigMap whose keys are <process_id>.yaml files,
+  # mounted at /processes (the engine loads them at startup).
+  #   kubectl create configmap oumma-processes \
+  #     --from-file=order-processing.yaml=./workflows/order-processing.yaml
+  # Leave empty to run with database-only definitions.
+  processesConfigMap: ""
+
+web:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+
+# External PostgreSQL the engine uses (created tables are auto-migrated at
+# startup by the engine). All fields are required for a working deployment.
+database:
+  host: ""
+  port: 5432
+  username: ""
+  password: ""
+  database: ""
+
+# Keycloak the engine validates tokens against and manages users in.
+#  - url:            base URL reachable FROM the engine pods
+#  - realm:          realm with your Oumma users
+#  - clientId:       client used for the password grant (must have "direct
+#                    access grants" enabled)
+#  - adminClientId:  confidential client with a service account used for the
+#                    admin REST API (user registration, group sync)
+keycloak:
+  url: ""
+  realm: "oumma"
+  clientId: "oumma-app"
+  clientSecret: ""
+  adminClientId: "oumma-admin"
+  adminClientSecret: ""
+
+# LLM endpoint (any OpenAI-compatible API: OpenAI, Groq, vLLM, Ollama...)
+llm:
+  baseUrl: ""
+  model: ""
+  apiKey: ""
+  # Optional separate LLM for the designer chat; empty = same as above.
+  designerBaseUrl: ""
+  designerModel: ""
+  designerApiKey: ""
+
+# External-system tools (Gmail/Telegram/WhatsApp/HTTP steps).
+tools:
+  dryRun: true
+  telegramApiBase: "https://api.telegram.org"
+  whatsappApiBase: "https://graph.facebook.com/v18.0"
+
+# Email delivery (activation links, quota claims). Optional.
+smtp:
+  host: ""
+  port: 587
+  user: ""
+  password: ""
+  from: ""
+  starttls: true
+
+# Ingress: the web app is the ONLY public surface. It reverse-proxies every
+# engine API path in-cluster, so the engine service is never exposed.
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "oumma.example.com"
+  annotations: {}
+  # e.g.
+  #   nginx.ingress.kubernetes.io/ssl-redirect: "true"
+  #   nginx.ingress.kubernetes.io/proxy-buffer-size: "128k"
+  tls:
+    secretName: ""
+    hosts: []
+    # - oumma.example.com
+  # Optional cert-manager Certificate (created by the chart).
+  certificate:
+    enabled: false
+    issuer: ""
+    # e.g. letsencrypt-prod (ClusterIssuer)

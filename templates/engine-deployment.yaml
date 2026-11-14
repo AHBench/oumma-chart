@@ -1,0 +1,119 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "oumma.engineService" . }}
+  labels:
+    {{- include "oumma.labels" . | nindent 4 }}
+    app.kubernetes.io/component: engine
+spec:
+  replicas: {{ .Values.engine.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: engine
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: engine
+    spec:
+      {{- include "oumma.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: engine
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.engineTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ADDR
+              value: ":8080"
+            - name: DATABASE_URL
+              value: "postgresql://{{ .Values.database.username }}:{{ .Values.database.password }}@{{ .Values.database.host }}:{{ .Values.database.port }}/{{ .Values.database.database }}"
+            - name: KEYCLOAK_URL
+              value: {{ .Values.keycloak.url | quote }}
+            - name: KEYCLOAK_REALM
+              value: {{ .Values.keycloak.realm | quote }}
+            - name: KEYCLOAK_CLIENT_ID
+              value: {{ .Values.keycloak.clientId | quote }}
+            - name: KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oumma.fullname" . }}-secrets
+                  key: keycloak-client-secret
+            - name: KEYCLOAK_ADMIN_CLIENT_ID
+              value: {{ .Values.keycloak.adminClientId | quote }}
+            - name: KEYCLOAK_ADMIN_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oumma.fullname" . }}-secrets
+                  key: keycloak-admin-client-secret
+            - name: OPENAI_BASE_URL
+              value: {{ .Values.llm.baseUrl | quote }}
+            - name: OPENAI_MODEL
+              value: {{ .Values.llm.model | quote }}
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oumma.fullname" . }}-secrets
+                  key: llm-api-key
+            - name: DESIGNER_OPENAI_BASE_URL
+              value: {{ .Values.llm.designerBaseUrl | quote }}
+            - name: DESIGNER_OPENAI_MODEL
+              value: {{ .Values.llm.designerModel | quote }}
+            - name: DESIGNER_OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oumma.fullname" . }}-secrets
+                  key: llm-designer-api-key
+            - name: MCP_TOOLS_DRY_RUN
+              value: {{ .Values.tools.dryRun | quote }}
+            - name: MCP_TELEGRAM_API_BASE
+              value: {{ .Values.tools.telegramApiBase | quote }}
+            - name: MCP_WHATSAPP_API_BASE
+              value: {{ .Values.tools.whatsappApiBase | quote }}
+            {{- if .Values.smtp.host }}
+            - name: SMTP_HOST
+              value: {{ .Values.smtp.host | quote }}
+            - name: SMTP_PORT
+              value: {{ .Values.smtp.port | quote }}
+            - name: SMTP_USER
+              value: {{ .Values.smtp.user | quote }}
+            - name: SMTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "oumma.fullname" . }}-secrets
+                  key: smtp-password
+            - name: SMTP_FROM
+              value: {{ .Values.smtp.from | quote }}
+            - name: SMTP_STARTTLS
+              value: {{ .Values.smtp.starttls | quote }}
+            {{- end }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.engine.resources | nindent 12 }}
+          {{- if .Values.engine.processesConfigMap }}
+          volumeMounts:
+            - name: processes
+              mountPath: /processes
+              readOnly: true
+          {{- end }}
+      {{- if .Values.engine.processesConfigMap }}
+      volumes:
+        - name: processes
+          configMap:
+            name: {{ .Values.engine.processesConfigMap }}
+      {{- end }}

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: oumma
+description: Oumma agentic workflow platform - Go engine + React workspace (single ingress surface, in-cluster backend)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - workflow
+  - agentic
+  - bpmn
+  - keycloak
+home: https://github.com/AHBench/oumma
+sources:
+  - https://github.com/AHBench/oumma
+  - https://github.com/AHBench/oumma-app
+maintainers:
+  - name: abhakim

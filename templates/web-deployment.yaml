@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "oumma.webService" . }}
+  labels:
+    {{- include "oumma.labels" . | nindent 4 }}
+    app.kubernetes.io/component: web
+spec:
+  replicas: {{ .Values.web.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ .Chart.Name }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ .Chart.Name }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: web
+    spec:
+      {{- include "oumma.imagePullSecrets" . | nindent 6 }}
+      containers:
+        - name: web
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.appTag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            # Proxy mode: nginx reverse-proxies /api, /processes, /oper-api,
+            # /dms-api and /data-api to the engine - the browser only ever
+            # talks to this surface (same origin).
+            - name: OUMMA_ENGINE_UPSTREAM
+              value: "{{ include "oumma.engineService" . }}.{{ .Release.Namespace }}.svc.cluster.local:8080"
+            # All service bases are EMPTY on purpose: the app resolves them
+            # to same-origin paths, which nginx forwards to the engine.
+            - name: DOCUMENT_SERVICE_BASE_URL
+              value: ""
+            - name: BRIEF_DATA_OPER_INDEX_URL
+              value: ""
+            - name: PROCESS_SERVICE_BASE_URL
+              value: ""
+            - name: OUMMA_PROCESSES_URL
+              value: ""
+            - name: BRIEF_AI_BASE_URL
+              value: ""
+            - name: BRIEF_DATA_INDEX_URL
+              value: ""
+            - name: KEYCLOAK_LOGIN_URL
+              value: ""
+            - name: KEYCLOAK_CHECK_TOKEN_URL
+              value: ""
+            - name: KEYCLOAK_LOGOUT_URL
+              value: ""
+            - name: KEYCLOAK_REFRESH_URL
+              value: ""
+            - name: DOCUMENT_SERVICE_NAME
+              value: "oumma"
+            - name: PROCESS_SERVICE_NAME
+              value: "oumma"
+            - name: KEYCLOAK_SERVICE_NAME
+              value: "oumma"
+          readinessProbe:
+            httpGet:
+              path: /config/config.js
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
