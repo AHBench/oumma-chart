@@ -74,6 +74,10 @@ spec:
               value: {{ .Values.tools.telegramApiBase | quote }}
             - name: MCP_WHATSAPP_API_BASE
               value: {{ .Values.tools.whatsappApiBase | quote }}
+            {{- if .Values.activation.baseUrl }}
+            - name: ACTIVATION_BASE_URL
+              value: {{ .Values.activation.baseUrl | quote }}
+            {{- end }}
             {{- if .Values.smtp.host }}
             - name: SMTP_HOST
               value: {{ .Values.smtp.host | quote }}
